@@ -7,24 +7,38 @@ import AiAssistant from './components/AiAssistant';
 import ComparisonTable from './components/ComparisonTable';
 import TemplateManager from './components/TemplateManager';
 import ScoutCard from './components/ScoutCard'; 
+import VideoGenerator from './components/VideoGenerator';
+import AppGuide from './components/AppGuide';
 import { ChartConfig } from './types';
 import { INITIAL_DATA, ALTERNATIVE_TEMPLATES } from './constants';
-import { Settings2, BarChart2 as AppIcon, FileJson, FileUp } from 'lucide-react';
+import { Settings2, BarChart2 as AppIcon, FileJson, FileUp, Video } from 'lucide-react';
 
 const STORAGE_KEY = 'proscout_radar_config_v1';
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'radar' | 'bar' | 'card'>('radar');
+  const [viewMode, setViewMode] = useState<'radar' | 'bar' | 'card' | 'video'>('radar');
   const [showEditor, setShowEditor] = useState(true);
   const [config, setConfig] = useState<ChartConfig>(INITIAL_DATA);
   const [analysisMap, setAnalysisMap] = useState<Record<string, { detailed: string, summary: string }>>({});
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
+    const checkKey = async () => {
+      const selected = await window.aistudio.hasSelectedApiKey();
+      setHasApiKey(selected);
+    };
+    checkKey();
+    
     const savedConfig = localStorage.getItem(STORAGE_KEY);
     if (savedConfig) {
       try { setConfig(JSON.parse(savedConfig)); } catch (e) {}
     }
   }, []);
+
+  const handleOpenKeySelector = async () => {
+    await window.aistudio.openSelectKey();
+    setHasApiKey(true); 
+  };
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -76,6 +90,8 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           
+          <AppGuide />
+
           <label className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-emerald-400 text-xs font-bold transition-all cursor-pointer">
             <FileUp size={16} /> IMPORTAR JSON
             <input type="file" accept=".json" className="hidden" onChange={handleImportJson} />
@@ -112,9 +128,9 @@ const App: React.FC = () => {
         <div className={showEditor ? "lg:col-span-8 space-y-6" : "lg:col-span-12 space-y-6"}>
           <div className="bg-slate-900/50 p-2 rounded border border-slate-800 flex justify-between items-center shadow-inner">
              <div className="flex gap-1">
-                {['radar', 'bar', 'card'].map(m => (
+                {['radar', 'bar', 'card', 'video'].map(m => (
                   <button key={m} onClick={() => setViewMode(m as any)} className={`px-4 py-1.5 rounded text-[10px] font-black uppercase transition-all ${viewMode === m ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}>
-                    {m}
+                    {m === 'video' ? <div className="flex items-center gap-1"><Video size={12}/> video</div> : m}
                   </button>
                 ))}
              </div>
@@ -123,15 +139,18 @@ const App: React.FC = () => {
             {viewMode === 'radar' && <RadarChartComponent config={config} />}
             {viewMode === 'bar' && <BarChartComponent config={config} />}
             {viewMode === 'card' && (
-              <div className="flex flex-col gap-10">
+              <div className="flex flex-col items-center gap-10 w-full overflow-visible">
                 {config.players.filter(p => p.visible !== false).map(p => (
-                   <div key={p.id} className="relative scale-[0.6] origin-top -mb-[260px]">
-                      <ScoutCard config={config} player={p} aiAnalysis={analysisMap[p.id]?.summary} />
+                   <div key={p.id} className="w-full flex justify-center -ml-4 lg:-ml-8">
+                      <div className="scale-[0.55] sm:scale-[0.7] xl:scale-[0.85] origin-center -my-[180px] sm:-my-[120px]">
+                        <ScoutCard config={config} player={p} aiAnalysis={analysisMap[p.id]?.summary} />
+                      </div>
                    </div>
                 ))}
               </div>
             )}
-            {viewMode !== 'card' && <div className="mt-8"><ComparisonTable config={config} /></div>}
+            {viewMode === 'video' && <VideoGenerator config={config} hasKey={hasApiKey} onOpenKey={handleOpenKeySelector} />}
+            {viewMode !== 'card' && viewMode !== 'video' && <div className="mt-8"><ComparisonTable config={config} /></div>}
           </div>
           <AiAssistant config={config} onAnalysisChange={handleAnalysisChange} />
         </div>
