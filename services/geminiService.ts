@@ -1,50 +1,107 @@
-import { GoogleGenAI } from "@google/genai";
-import { ChartConfig } from "../types";
 
-// Initialize safely - if key is missing, methods will throw/fail gracefully
+import { GoogleGenAI, Type } from "@google/genai";
+import { ChartConfig, ChatMessage } from "../types";
+
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const modelName = "gemini-3-flash-preview"; // Actualizado a la versión recomendada para tareas complejas
+
+const calculateAge = (birthDate?: string) => {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age;
+};
 
 export const analyzePlayerStats = async (config: ChartConfig): Promise<string> => {
   if (!process.env.API_KEY) {
-    throw new Error("API Key is missing. Please configure process.env.API_KEY.");
+    throw new Error("API Key is missing.");
   }
 
-  const model = "gemini-2.5-flash";
-  
-  // Construct a prompt based on the chart data
-  const playersText = config.players.map(p => 
-    `${p.name}: [${p.values.join(', ')}]`
-  ).join('\n');
+  const activePlayers = config.players.filter(p => p.visible !== false);
+  if (activePlayers.length === 0) throw new Error("No hay jugadores visibles.");
 
-  const categoriesText = config.categories.join(', ');
+  const playersData = activePlayers.map(p => ({
+    id: p.id,
+    name: p.name,
+    position: p.position,
+    age: calculateAge(p.birthDate),
+    stats: p.values
+  }));
 
   const prompt = `
-    Actúa como un scout de fútbol de clase mundial y analista de datos.
-    
-    Tengo un gráfico de radar titulado "${config.title}".
-    Las categorías (ejes) son: ${categoriesText}.
-    La escala es generalmente 0-100 (rango percentil o métrica normalizada).
+    Actúa como un scout de fútbol de clase mundial. Analiza a los siguientes jugadores basándote en sus estadísticas (0-100) y las categorías: ${config.categories.join(', ')}.
 
-    Aquí están los datos de los jugadores:
-    ${playersText}
+    DATOS DE LOS JUGADORES:
+    ${JSON.stringify(playersData)}
 
-    Por favor, proporciona un análisis conciso pero perspicaz EN ESPAÑOL:
-    1. Identifica el estilo de juego principal del jugador(es) basado en métricas altas/bajas.
-    2. Destaca las fortalezas clave y las posibles debilidades.
-    3. Si hay varios jugadores, compáralos brevemente.
-    
-    Formatea la salida en Markdown limpio. Manténlo por debajo de 250 palabras.
+    INSTRUCCIONES:
+    Para CADA jugador, genera:
+    1. Un análisis técnico detallado (puntos fuertes y áreas de mejora).
+    2. Una frase de resumen ejecutivo (máximo 15 palabras) que defina su perfil.
+
+    DEBES responder en este formato JSON exacto:
+    {
+      "players": [
+        {
+          "id": "ID_DEL_JUGADOR",
+          "detailedAnalysis": "Markdown del análisis...",
+          "executiveSummary": "Frase resumen impactante..."
+        }
+      ]
+    }
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: model,
+      model: modelName,
       contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      }
     });
-    
-    return response.text || "No se pudo generar el análisis.";
+    return response.text;
   } catch (error) {
     console.error("Gemini Analysis Failed:", error);
-    throw new Error("Error al generar el análisis. Por favor verifica tu API key e intenta de nuevo.");
+    throw new Error("Error al generar el análisis.");
+  }
+};
+
+export const sendChatMessage = async (
+  message: string, 
+  history: ChatMessage[], 
+  config: ChartConfig
+): Promise<string> => {
+  if (!process.env.API_KEY) throw new Error("API Key is missing.");
+
+  const activePlayers = config.players.filter(p => p.visible !== false);
+  const contextData = JSON.stringify({
+    title: config.title,
+    categories: config.categories,
+    players: activePlayers.map(p => ({ 
+        name: p.name, 
+        age: calculateAge(p.birthDate),
+        pos: p.position,
+        val: p.marketValue,
+        values: p.values 
+    }))
+  });
+
+  const systemInstruction = `Eres un asistente experto en scouting. Datos actuales: ${contextData}. Responde en Español de forma profesional y concisa.`;
+
+  try {
+    const chat = ai.chats.create({
+      model: modelName,
+      config: { systemInstruction: systemInstruction },
+      history: history.map(h => ({ role: h.role, parts: [{ text: h.text }] }))
+    });
+
+    const result = await chat.sendMessage({ message: message });
+    return result.text || "No pude generar una respuesta.";
+  } catch (error) {
+    console.error("Chat Error:", error);
+    throw new Error("Error al conectar con el asistente.");
   }
 };

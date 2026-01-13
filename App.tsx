@@ -1,136 +1,139 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import RadarChartComponent from './components/RadarChartComponent';
+import BarChartComponent from './components/BarChartComponent';
 import StatEditor from './components/StatEditor';
-import AiScout from './components/AiScout';
+import AiAssistant from './components/AiAssistant';
+import ComparisonTable from './components/ComparisonTable';
+import TemplateManager from './components/TemplateManager';
+import ScoutCard from './components/ScoutCard'; 
 import { ChartConfig } from './types';
-import { INITIAL_DATA, ALTERNATIVE_TEMPLATES, PLAYER_COLORS } from './constants';
-import { LayoutDashboard, Settings2, Github } from 'lucide-react';
+import { INITIAL_DATA, ALTERNATIVE_TEMPLATES } from './constants';
+import { Settings2, BarChart2 as AppIcon, FileJson, FileUp } from 'lucide-react';
+
+const STORAGE_KEY = 'proscout_radar_config_v1';
 
 const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'radar' | 'bar' | 'card'>('radar');
+  const [showEditor, setShowEditor] = useState(true);
   const [config, setConfig] = useState<ChartConfig>(INITIAL_DATA);
+  const [analysisMap, setAnalysisMap] = useState<Record<string, { detailed: string, summary: string }>>({});
 
-  const loadTemplate = (type: 'ATTACK' | 'DEFENSE' | 'POSSESSION') => {
-    const template = ALTERNATIVE_TEMPLATES[type];
-    let newTitle = '';
-    
-    switch (type) {
-      case 'ATTACK':
-        newTitle = 'Rendimiento Ofensivo';
-        break;
-      case 'DEFENSE':
-        newTitle = 'Acciones Defensivas';
-        break;
-      case 'POSSESSION':
-        newTitle = 'Impacto en Posesión';
-        break;
+  useEffect(() => {
+    const savedConfig = localStorage.getItem(STORAGE_KEY);
+    if (savedConfig) {
+      try { setConfig(JSON.parse(savedConfig)); } catch (e) {}
     }
+  }, []);
 
-    setConfig(prev => ({
-      ...prev,
-      title: newTitle,
-      categories: template.categories,
-      players: prev.players.map(p => ({
-        ...p,
-        values: [...template.values] // Reset values to template default to avoid length mismatch
-      }))
-    }));
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  }, [config]);
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (json.categories && json.players) {
+          setConfig(json);
+        } else {
+          alert("El archivo JSON no tiene el formato de ProScout válido.");
+        }
+      } catch (err) {
+        alert("Error al leer el archivo JSON.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleAnalysisChange = (res: string) => {
+    try {
+      const data = JSON.parse(res);
+      if (!data.players || data.players.length === 0) {
+        setAnalysisMap({});
+        return;
+      }
+      const newMap: Record<string, { detailed: string, summary: string }> = {};
+      data.players.forEach((p: any) => {
+        newMap[p.id] = { detailed: p.detailedAnalysis, summary: p.executiveSummary };
+      });
+      setAnalysisMap(newMap);
+    } catch (e) {
+      setAnalysisMap({});
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20">
-      {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <LayoutDashboard size={20} className="text-white" />
-            </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              ProScout Radar
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-             <div className="hidden md:flex gap-2">
-                <button 
-                    onClick={() => loadTemplate('POSSESSION')}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-                >
-                    Plantilla Posesión
-                </button>
-                <button 
-                    onClick={() => loadTemplate('ATTACK')}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-                >
-                    Plantilla Ataque
-                </button>
-                <button 
-                    onClick={() => loadTemplate('DEFENSE')}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-                >
-                    Plantilla Defensa
-                </button>
-             </div>
-          </div>
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
+      <header className="bg-slate-900 border-b border-slate-800 h-16 flex items-center px-6 justify-between shadow-xl sticky top-0 z-[100]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center shadow-lg"><AppIcon className="text-white" size={18} /></div>
+          <h1 className="text-lg font-black uppercase tracking-tighter">ProScout <span className="text-emerald-500">IA</span></h1>
+        </div>
+        <div className="flex items-center gap-2">
+          
+          <label className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-emerald-400 text-xs font-bold transition-all cursor-pointer">
+            <FileUp size={16} /> IMPORTAR JSON
+            <input type="file" accept=".json" className="hidden" onChange={handleImportJson} />
+          </label>
+
+          <button onClick={() => {
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `backup_${Date.now()}.json`; a.click();
+          }} className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-blue-400 text-xs font-bold transition-all">
+            <FileJson size={16} /> BACKUP
+          </button>
+          
+          <button onClick={() => setShowEditor(!showEditor)} className={`p-2 rounded-lg transition-colors ${showEditor ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={20} /></button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        
-        {/* Mobile Template Buttons */}
-        <div className="md:hidden flex gap-2 overflow-x-auto pb-4 mb-2">
-            <button 
-                onClick={() => loadTemplate('POSSESSION')}
-                className="whitespace-nowrap text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-            >
-                Plantilla Posesión
-            </button>
-            <button 
-                onClick={() => loadTemplate('ATTACK')}
-                className="whitespace-nowrap text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-            >
-                Plantilla Ataque
-            </button>
-            <button 
-                onClick={() => loadTemplate('DEFENSE')}
-                className="whitespace-nowrap text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-            >
-                Plantilla Defensa
-            </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Left Column: Chart */}
-          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
-            <RadarChartComponent config={config} />
-            
-            <div className="hidden lg:block">
-               <AiScout config={config} />
-            </div>
-          </div>
-
-          {/* Right Column: Controls */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {showEditor && (
+          <div className="lg:col-span-4 space-y-6">
+            <TemplateManager 
+              currentConfig={config} 
+              onLoadTemplate={(cat) => setConfig({...config, categories: cat})} 
+              onLoadStandardTemplate={(type) => {
+                const template = ALTERNATIVE_TEMPLATES[type];
+                const newPlayers = config.players.map(p => ({ ...p, values: [...template.values] }));
+                setConfig({ ...config, categories: template.categories, players: newPlayers });
+              }} 
+            />
             <StatEditor config={config} onChange={setConfig} />
-            
-            <div className="lg:hidden">
-               <AiScout config={config} />
-            </div>
-
-            <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 text-sm text-slate-500">
-               <h4 className="font-semibold text-slate-400 mb-2 flex items-center gap-2">
-                 <Settings2 size={16} /> Instrucciones
-               </h4>
-               <ul className="list-disc list-inside space-y-1 ml-1">
-                 <li>Agrega jugadores para comparar estadísticas.</li>
-                 <li>Haz clic en las categorías para renombrar los ejes.</li>
-                 <li>Los valores se ajustan automáticamente (máx del set o 100).</li>
-                 <li>Usa la IA para generar un informe de scouting.</li>
-               </ul>
-            </div>
           </div>
-
+        )}
+        <div className={showEditor ? "lg:col-span-8 space-y-6" : "lg:col-span-12 space-y-6"}>
+          <div className="bg-slate-900/50 p-2 rounded border border-slate-800 flex justify-between items-center shadow-inner">
+             <div className="flex gap-1">
+                {['radar', 'bar', 'card'].map(m => (
+                  <button key={m} onClick={() => setViewMode(m as any)} className={`px-4 py-1.5 rounded text-[10px] font-black uppercase transition-all ${viewMode === m ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}>
+                    {m}
+                  </button>
+                ))}
+             </div>
+          </div>
+          <div className="min-h-[500px]">
+            {viewMode === 'radar' && <RadarChartComponent config={config} />}
+            {viewMode === 'bar' && <BarChartComponent config={config} />}
+            {viewMode === 'card' && (
+              <div className="flex flex-col gap-10">
+                {config.players.filter(p => p.visible !== false).map(p => (
+                   <div key={p.id} className="relative scale-[0.6] origin-top -mb-[260px]">
+                      <ScoutCard config={config} player={p} aiAnalysis={analysisMap[p.id]?.summary} />
+                   </div>
+                ))}
+              </div>
+            )}
+            {viewMode !== 'card' && <div className="mt-8"><ComparisonTable config={config} /></div>}
+          </div>
+          <AiAssistant config={config} onAnalysisChange={handleAnalysisChange} />
         </div>
       </main>
     </div>

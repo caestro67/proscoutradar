@@ -1,5 +1,5 @@
 {
-  "name": "ProScout Radar",
+  "name": "ProScout IA",
   "description": "An interactive football player statistics visualizer inspired by matplotlib radar charts, featuring real-time editing and AI-powered scouting reports.",
   "requestFramePermissions": []
 }
