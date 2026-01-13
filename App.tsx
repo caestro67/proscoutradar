@@ -24,6 +24,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkKey = async () => {
+      // @ts-ignore
       const selected = await window.aistudio.hasSelectedApiKey();
       setHasApiKey(selected);
     };
@@ -36,6 +37,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleOpenKeySelector = async () => {
+    // @ts-ignore
     await window.aistudio.openSelectKey();
     setHasApiKey(true); 
   };
@@ -82,37 +84,44 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500 selection:text-white">
       <header className="bg-slate-900 border-b border-slate-800 h-16 flex items-center px-6 justify-between shadow-xl sticky top-0 z-[100]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center shadow-lg"><AppIcon className="text-white" size={18} /></div>
-          <h1 className="text-lg font-black uppercase tracking-tighter">ProScout <span className="text-emerald-500">IA</span></h1>
+          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-900/40 rotate-3"><AppIcon className="text-white" size={20} /></div>
+          <div>
+            <h1 className="text-lg font-black uppercase tracking-tighter leading-none">ProScout <span className="text-emerald-500">IA</span></h1>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Professional Analysis</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           
           <AppGuide />
 
-          <label className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-emerald-400 text-xs font-bold transition-all cursor-pointer">
-            <FileUp size={16} /> IMPORTAR JSON
-            <input type="file" accept=".json" className="hidden" onChange={handleImportJson} />
-          </label>
+          <div className="h-8 w-px bg-slate-800 mx-2"></div>
 
-          <button onClick={() => {
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = `backup_${Date.now()}.json`; a.click();
-          }} className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-blue-400 text-xs font-bold transition-all">
-            <FileJson size={16} /> BACKUP
-          </button>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-emerald-400 text-xs font-bold transition-all cursor-pointer hover:bg-slate-800 rounded-lg">
+              <FileUp size={16} /> <span className="hidden sm:inline">IMPORTAR</span>
+              <input type="file" accept=".json" className="hidden" onChange={handleImportJson} />
+            </label>
+
+            <button onClick={() => {
+              const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = `backup_${Date.now()}.json`; a.click();
+            }} className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-blue-400 text-xs font-bold transition-all hover:bg-slate-800 rounded-lg">
+              <FileJson size={16} /> <span className="hidden sm:inline">BACKUP</span>
+            </button>
+          </div>
           
-          <button onClick={() => setShowEditor(!showEditor)} className={`p-2 rounded-lg transition-colors ${showEditor ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={20} /></button>
+          <button onClick={() => setShowEditor(!showEditor)} className={`p-2 rounded-xl transition-all ${showEditor ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40 scale-110' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Settings2 size={20} /></button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
         {showEditor && (
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-6 animate-in slide-in-from-left duration-500">
             <TemplateManager 
               currentConfig={config} 
               onLoadTemplate={(cat) => setConfig({...config, categories: cat})} 
@@ -126,23 +135,23 @@ const App: React.FC = () => {
           </div>
         )}
         <div className={showEditor ? "lg:col-span-8 space-y-6" : "lg:col-span-12 space-y-6"}>
-          <div className="bg-slate-900/50 p-2 rounded border border-slate-800 flex justify-between items-center shadow-inner">
-             <div className="flex gap-1">
+          <div className="bg-slate-900/50 p-2 rounded-2xl border border-slate-800 flex justify-between items-center shadow-inner">
+             <div className="flex gap-1 p-1 bg-slate-950/50 rounded-xl border border-slate-800">
                 {['radar', 'bar', 'card', 'video'].map(m => (
-                  <button key={m} onClick={() => setViewMode(m as any)} className={`px-4 py-1.5 rounded text-[10px] font-black uppercase transition-all ${viewMode === m ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <button key={m} onClick={() => setViewMode(m as any)} className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
                     {m === 'video' ? <div className="flex items-center gap-1"><Video size={12}/> video</div> : m}
                   </button>
                 ))}
              </div>
           </div>
-          <div className="min-h-[500px]">
+          <div className="min-h-[500px] animate-in zoom-in-95 duration-500">
             {viewMode === 'radar' && <RadarChartComponent config={config} />}
             {viewMode === 'bar' && <BarChartComponent config={config} />}
             {viewMode === 'card' && (
               <div className="flex flex-col items-center gap-10 w-full overflow-visible">
                 {config.players.filter(p => p.visible !== false).map(p => (
                    <div key={p.id} className="w-full flex justify-center -ml-4 lg:-ml-8">
-                      <div className="scale-[0.55] sm:scale-[0.7] xl:scale-[0.85] origin-center -my-[180px] sm:-my-[120px]">
+                      <div className="scale-[0.55] sm:scale-[0.7] xl:scale-[0.85] origin-center -my-[180px] sm:-my-[120px] transition-transform hover:scale-[0.57] sm:hover:scale-[0.72] xl:hover:scale-[0.87] duration-500">
                         <ScoutCard config={config} player={p} aiAnalysis={analysisMap[p.id]?.summary} />
                       </div>
                    </div>

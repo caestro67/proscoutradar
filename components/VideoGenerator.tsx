@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ChartConfig, PlayerData } from '../types';
+import { ChartConfig } from '../types';
 import { Video, Loader2, Sparkles, AlertCircle, Play, Download, Key } from 'lucide-react';
 
 interface Props {
@@ -31,7 +31,7 @@ const VideoGenerator: React.FC<Props> = ({ config, hasKey, onOpenKey }) => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      const statsPrompt = `A professional cinematic cinematic shot of a soccer player named ${player.name} in a futuristic stadium. 
+      const statsPrompt = `A professional cinematic shot of a soccer player named ${player.name} in a futuristic stadium. 
       The player specializes in ${config.categories.join(', ')}. 
       Visual style: High contrast, 8k resolution, emerald green lighting, dramatic shadows, particles in the air. 
       The player is performing a dynamic action sequence.`;
@@ -48,7 +48,6 @@ const VideoGenerator: React.FC<Props> = ({ config, hasKey, onOpenKey }) => {
         }
       };
 
-      // Si hay imagen del jugador, usarla como frame inicial
       if (player.image && player.image.startsWith('data:image')) {
         const base64Data = player.image.split(',')[1];
         payload.image = {
@@ -111,7 +110,7 @@ const VideoGenerator: React.FC<Props> = ({ config, hasKey, onOpenKey }) => {
           <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
             <Video size={40} className="text-amber-500" />
           </div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Generación de Vídeo <span className="text-amber-500">Pro</span></h2>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Generación de Vídeo <span className="text-amber-500">Pro</span></h2>
           <p className="text-slate-400 text-sm">
             Para generar vídeos cinematográficos de tus jugadores con IA, necesitas configurar una clave API personal con facturación activa.
           </p>
@@ -135,7 +134,7 @@ const VideoGenerator: React.FC<Props> = ({ config, hasKey, onOpenKey }) => {
       ) : (
         <div className="w-full max-w-2xl space-y-8">
           <div className="flex flex-col items-center">
-            <h2 className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
+            <h2 className="text-3xl font-black uppercase tracking-tighter text-white flex items-center gap-3">
               <Sparkles className="text-emerald-500" /> VEO <span className="text-emerald-500">CINEMATIC</span> GENERATOR
             </h2>
             <p className="text-slate-400 mt-2">Convierte estadísticas en una pieza de vídeo épica de 6 segundos.</p>
@@ -160,7 +159,7 @@ const VideoGenerator: React.FC<Props> = ({ config, hasKey, onOpenKey }) => {
               <button 
                 onClick={generateVideo}
                 disabled={loading || !selectedPlayerId}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 font-black uppercase py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/10"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 font-black uppercase py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/10 text-white"
               >
                 {loading ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
                 {loading ? 'GENERANDO...' : 'GENERAR VÍDEO'}
